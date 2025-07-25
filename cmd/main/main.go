@@ -2,10 +2,14 @@ package main
 
 import (
 	"context"
+	"log"
 	"log/slog"
 	"os"
 	"os/signal"
 	"syscall"
+
+	"github.com/Houeta/chrono-flow/internal/bot"
+	"github.com/Houeta/chrono-flow/internal/config"
 )
 
 // Constants for different environment types.
@@ -20,23 +24,32 @@ func main() {
 	// Create a context that will be canceled when an interrupt signal is received.
 	// This allows for graceful shutdown.
 	ctx, stop := signal.NotifyContext(context.Background(), syscall.SIGINT, syscall.SIGTERM)
-	defer stop()
 
-	// TODO: Add cfg loading.
+	cfg := config.MustLoad()
 
 	// Set up the logger based on the environment.
-	logger := setupLogger(envDev) // TODO: change to cfg.Env
+	logger := setupLogger(cfg.Env)
 
-	// TODO: Add repository
+	chronoBot, err := bot.NewBot(logger, cfg.Tg.Token, cfg.Tg.Timeout)
+	if err != nil {
+		log.Fatalf("Failed to init bot: %v", err)
+	}
+	defer stop()
 
 	// Log that the application has started.
 	logger.InfoContext(ctx, "Application started. Press Ctrl+C to stop.")
+
+	// Start the bot in a goroutine to allow main to listen for signals.
+	go chronoBot.Start()
 
 	// Wait for the context to be canceled (e.g., by Ctrl+C).
 	<-ctx.Done()
 
 	// Log that a shutdown signal has been received.
 	logger.InfoContext(ctx, "Shutdown signal received. Stopping application...")
+
+	// Stop the bot gracefully.
+	chronoBot.Stop()
 
 	// Log graceful shutdown completion.
 	logger.InfoContext(ctx, "Application stopped gracefully.")
