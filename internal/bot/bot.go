@@ -10,7 +10,7 @@ import (
 
 // Bot contains the bot API instance and other information.
 type Bot struct {
-	bot *telebot.Bot
+	bot API
 	log *slog.Logger
 	// repo    repository.Interface
 }
@@ -23,10 +23,9 @@ func NewBot(log *slog.Logger, token string, poller time.Duration) (*Bot, error) 
 	if err != nil {
 		return nil, fmt.Errorf("failed to initialize Telegram bot: %w", err)
 	}
-	log.Info("Authorized on acount", "account", bot.Me.Username)
+	log.Info("Authorized on account", "account", bot.Me.Username)
 
 	botInstance := &Bot{bot: bot, log: log}
-
 	botInstance.registerRoutes()
 
 	return botInstance, nil

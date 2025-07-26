@@ -10,8 +10,7 @@ import (
 func (b *Bot) startHandler(ctx telebot.Context) error {
 	b.log.Info("User started the bot", "username", ctx.Sender().Username)
 
-	err := ctx.Send("Hello!")
-	if err != nil {
+	if err := ctx.Send("Hello!"); err != nil {
 		return fmt.Errorf("failed to send greeting message: %w", err)
 	}
 
