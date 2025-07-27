@@ -20,11 +20,13 @@ func TestMustLoad(t *testing.T) {
 	t.Run("success", func(t *testing.T) {
 		t.Setenv("CF_ENV", "local")
 		t.Setenv("CF_TELEGRAM_TOKEN", "telegramToken")
+		t.Setenv("CF_DEST_URL", "https://example.com")
 
 		cfg := config.MustLoad()
 
 		assert.Equal(t, "local", cfg.Env)
 		assert.Equal(t, 15*time.Second, cfg.Tg.Timeout)
 		assert.Equal(t, "telegramToken", cfg.Tg.Token)
+		assert.Equal(t, "https://example.com", cfg.URL)
 	})
 }

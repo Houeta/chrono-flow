@@ -10,6 +10,7 @@ import (
 
 	"github.com/Houeta/chrono-flow/internal/bot"
 	"github.com/Houeta/chrono-flow/internal/config"
+	"github.com/Houeta/chrono-flow/internal/parser"
 )
 
 // Constants for different environment types.
@@ -29,6 +30,8 @@ func main() {
 
 	// Set up the logger based on the environment.
 	logger := setupLogger(cfg.Env)
+
+	_ = parser.NewParser(logger, cfg.URL)
 
 	chronoBot, err := bot.NewBot(logger, cfg.Tg.Token, cfg.Tg.Timeout)
 	if err != nil {
