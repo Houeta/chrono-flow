@@ -11,6 +11,7 @@ var ErrEmptyToken = errors.New("error getting CF_TELEGRAM_TOKEN: variable not sp
 
 type Config struct {
 	Env string // Env is the current environment: local, dev, prod.
+	URL string
 	Tg  Telegram
 }
 
@@ -35,6 +36,7 @@ func MustLoad() *Config {
 
 	return &Config{
 		Env: viper.GetString("ENV"),
+		URL: viper.GetString("DEST_URL"),
 		Tg: Telegram{
 			Token:   viper.GetString("TELEGRAM_TOKEN"),
 			Timeout: viper.GetDuration("TELEGRAM_TIMEOUT"),
