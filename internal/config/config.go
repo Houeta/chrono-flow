@@ -10,9 +10,10 @@ import (
 var ErrEmptyToken = errors.New("error getting CF_TELEGRAM_TOKEN: variable not specified or contains an empty string")
 
 type Config struct {
-	Env string // Env is the current environment: local, dev, prod.
-	URL string
-	Tg  Telegram
+	Env         string // Env is the current environment: local, dev, prod.
+	URL         string
+	StoragePath string
+	Tg          Telegram
 }
 
 type Telegram struct {
@@ -29,14 +30,16 @@ func MustLoad() *Config {
 	// optional args
 	viper.SetDefault("ENV", "production")
 	viper.SetDefault("TELEGRAM_TIMEOUT", "15s")
+	viper.SetDefault("STORAGE_PATH", "./chrono-flow.db")
 
 	if viper.GetString("TELEGRAM_TOKEN") == "" {
 		panic(ErrEmptyToken)
 	}
 
 	return &Config{
-		Env: viper.GetString("ENV"),
-		URL: viper.GetString("DEST_URL"),
+		Env:         viper.GetString("ENV"),
+		URL:         viper.GetString("DEST_URL"),
+		StoragePath: viper.GetString("STORAGE_PATH"),
 		Tg: Telegram{
 			Token:   viper.GetString("TELEGRAM_TOKEN"),
 			Timeout: viper.GetDuration("TELEGRAM_TIMEOUT"),

@@ -4,6 +4,7 @@ go 1.24.4
 
 require (
 	github.com/PuerkitoBio/goquery v1.10.3
+	github.com/mattn/go-sqlite3 v1.14.29
 	github.com/spf13/viper v1.20.1
 	github.com/stretchr/testify v1.10.0
 	gopkg.in/telebot.v4 v4.0.0-beta.5
