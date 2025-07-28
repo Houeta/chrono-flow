@@ -11,6 +11,8 @@ import (
 	"github.com/Houeta/chrono-flow/internal/bot"
 	"github.com/Houeta/chrono-flow/internal/config"
 	"github.com/Houeta/chrono-flow/internal/parser"
+	"github.com/Houeta/chrono-flow/internal/repository/sqlite"
+	_ "github.com/mattn/go-sqlite3"
 )
 
 // Constants for different environment types.
@@ -33,10 +35,16 @@ func main() {
 
 	_ = parser.NewParser(logger, cfg.URL)
 
+	repo, err := sqlite.NewRepository(ctx, logger, cfg.StoragePath)
+	if err != nil {
+		log.Fatalf("Failed to create a repository: %v", err)
+	}
+
 	chronoBot, err := bot.NewBot(logger, cfg.Tg.Token, cfg.Tg.Timeout)
 	if err != nil {
 		log.Fatalf("Failed to init bot: %v", err)
 	}
+	defer repo.Close()
 	defer stop()
 
 	// Log that the application has started.

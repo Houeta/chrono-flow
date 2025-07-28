@@ -21,6 +21,7 @@ func TestMustLoad(t *testing.T) {
 		t.Setenv("CF_ENV", "local")
 		t.Setenv("CF_TELEGRAM_TOKEN", "telegramToken")
 		t.Setenv("CF_DEST_URL", "https://example.com")
+		t.Setenv("CF_STORAGE_PATH", "some/path/to/db")
 
 		cfg := config.MustLoad()
 
@@ -28,5 +29,6 @@ func TestMustLoad(t *testing.T) {
 		assert.Equal(t, 15*time.Second, cfg.Tg.Timeout)
 		assert.Equal(t, "telegramToken", cfg.Tg.Token)
 		assert.Equal(t, "https://example.com", cfg.URL)
+		assert.Equal(t, "some/path/to/db", cfg.StoragePath)
 	})
 }
