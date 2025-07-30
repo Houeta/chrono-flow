@@ -42,6 +42,8 @@ func TestRegisterRoutes(t *testing.T) {
 	mockBot := mocks.NewAPI(t)
 
 	mockBot.On("Handle", "/start", mock.AnythingOfType("telebot.HandlerFunc")).Once()
+	mockBot.On("Handle", "/subscribe", mock.AnythingOfType("telebot.HandlerFunc")).Once()
+	mockBot.On("Handle", "/unsubscribe", mock.AnythingOfType("telebot.HandlerFunc")).Once()
 
 	logger := slog.Default()
 	testBot := Bot{bot: mockBot, log: logger}

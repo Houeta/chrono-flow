@@ -9,4 +9,10 @@ type API interface {
 	Start()
 	// Stop gracefully shuts the poller down.
 	Stop()
+
+	Leave(chat telebot.Recipient) error
+
+	NewContext(u telebot.Update) telebot.Context
+
+	Send(to telebot.Recipient, what interface{}, opts ...interface{}) (*telebot.Message, error)
 }
