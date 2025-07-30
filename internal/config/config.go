@@ -16,6 +16,7 @@ type Config struct {
 	URL         string
 	StoragePath string
 	AllowedIDs  []int64
+	Interval    time.Duration
 	Tg          Telegram
 }
 
@@ -34,6 +35,7 @@ func MustLoad() (*Config, error) {
 	viper.SetDefault("ENV", "production")
 	viper.SetDefault("TELEGRAM_TIMEOUT", "15s")
 	viper.SetDefault("STORAGE_PATH", "./chrono-flow.db")
+	viper.SetDefault("CHECK_INTERVAL", "10m")
 
 	if viper.GetString("TELEGRAM_TOKEN") == "" {
 		return nil, ErrEmptyToken
@@ -50,6 +52,7 @@ func MustLoad() (*Config, error) {
 		URL:         viper.GetString("DEST_URL"),
 		StoragePath: viper.GetString("STORAGE_PATH"),
 		AllowedIDs:  allowedIDs,
+		Interval:    viper.GetDuration("CHECK_INTERVAL"),
 		Tg: Telegram{
 			Token:   viper.GetString("TELEGRAM_TOKEN"),
 			Timeout: viper.GetDuration("TELEGRAM_TIMEOUT"),
