@@ -1,0 +1,141 @@
+name: CI/CD Pipeline
+
+on:
+  push:
+    branches: [ "main", "develop" ]
+    tags: ["*"]
+  pull_request:
+    branches: [ "main" ]
+
+jobs:
+  lint:
+    name: Lint Code
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # pin@v4.2.2
+
+      - name: Setup Go
+        uses: actions/setup-go@d35c59abb061a4a6fb18e82ac0862c26744d6ab5 # pin@5.5.0
+        with:
+          go-version: '${{ vars.GOLANG_VERSION }}'
+          check-latest: true
+
+      - name: Run golangci-lint
+        uses: golangci/golangci-lint-action@4afd733a84b1f43292c63897423277bb7f4313a9 #pin@8.0.0
+        with:
+          version: '${{ vars.GOLANGCI_LINT_VERSION }}'
+
+  test:
+    name: Run Unit Tests
+    runs-on: ubuntu-latest
+    needs: lint
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Go
+        uses: actions/setup-go@v5
+        with:
+          go-version: '${{ vars.GOLANG_VERSION }}'
+
+      - name: Run tests
+        run: make test
+
+  security:
+    name: Security Scan
+    runs-on: ubuntu-latest
+    permissions:
+      actions: read
+      contents: read
+      security-events: write
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Go
+        uses: actions/setup-go@v5
+        with:
+          go-version: '${{ vars.GOLANG_VERSION }}'
+
+      - name: Run govulncheck
+        run: go install golang.org/x/vuln/cmd/govulncheck@latest && govulncheck ./...
+
+      - name: Initialize CodeQL
+        uses: github/codeql-action/init@v3
+        with:
+          languages: go
+
+      - name: Perform CodeQL Analysis
+        uses: github/codeql-action/analyze@v3
+
+  build-and-push:
+    name: Build and Push Docker Image
+    runs-on: ubuntu-latest
+    needs: [lint, test, security]
+    permissions:
+      contents: read
+      packages: write
+    if: startsWith(github.ref, 'refs/tags/')
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Log in to GitHub Container Registry
+        uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Extract metadata for Docker
+        id: meta
+        uses: docker/metadata-action@v5
+        with:
+          images: ghcr.io/${{ github.repository }}
+
+      - name: Build and push Docker image
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          push: true
+          tags: ${{ steps.meta.outputs.tags }}
+          labels: ${{ steps.meta.outputs.labels }}
+ 
+  build-release:
+    name: Build and Release
+    needs: [lint, test, security]
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    if: startsWith(github.ref, 'refs/tags/')
+
+    steps:
+      # Step 1: Check out the repository's code at the specific tag that triggered the workflow.
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      # Step 2: Set up the Go environment.
+      - name: Set up Go
+        uses: actions/setup-go@v5
+        with:
+          go-version: '${{ vars.GOLANG_VERSION }}'
+
+      # Step 3: Build the application binary.
+      # We use ldflags to inject the version (tag name) into the binary.
+      # This is useful for a --version flag in your app.
+      # The -s and -w flags reduce the binary size.
+      - name: Build application
+        run: go build -v -o chronoFlow -ldflags="-s -w -X main.version=${{ github.ref_name }}" ./cmd/main/main.go
+
+      # Step 4: Create a GitHub Release and upload the built binary as an asset.
+      # This action uses the tag as the release name and uploads the files specified.
+      - name: Create Release and Upload Asset
+        uses: softprops/action-gh-release@v2
+        with:
+          # The name of the release. It will look like "Release v1.0.0".
+          name: "Release ${{ github.ref_name }}"
+          # A list of files to be uploaded as release assets.
+          files: |
+            ./chronoFlow
