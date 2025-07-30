@@ -12,6 +12,7 @@ import (
 	"github.com/Houeta/chrono-flow/internal/config"
 	"github.com/Houeta/chrono-flow/internal/parser"
 	"github.com/Houeta/chrono-flow/internal/repository/sqlite"
+	"github.com/Houeta/chrono-flow/internal/services/checker"
 	_ "github.com/mattn/go-sqlite3"
 )
 
@@ -33,12 +34,13 @@ func main() {
 	// Set up the logger based on the environment.
 	logger := setupLogger(cfg.Env)
 
-	_ = parser.NewParser(logger, cfg.URL)
+	parser := parser.NewParser(logger, cfg.URL)
 
 	repo, err := sqlite.NewRepository(ctx, logger, cfg.StoragePath)
 	if err != nil {
 		log.Fatalf("Failed to create a repository: %v", err)
 	}
+	_ = checker.NewChecker(logger, parser, repo)
 
 	chronoBot, err := bot.NewBot(logger, cfg.Tg.Token, cfg.Tg.Timeout)
 	if err != nil {

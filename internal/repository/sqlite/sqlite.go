@@ -5,6 +5,8 @@ import (
 	"database/sql"
 	"fmt"
 	"log/slog"
+
+	"github.com/Houeta/chrono-flow/internal/models"
 )
 
 // Repository represents a data repository that interacts with the database
@@ -13,6 +15,13 @@ import (
 type Repository struct {
 	db  *sql.DB
 	log *slog.Logger
+}
+
+type StateRepository interface {
+	// GetState returns the last saved state (page hash and product list).
+	GetState(ctx context.Context) (*models.State, error)
+	// UpdateState completely replaces the old state with the new one.
+	UpdateState(ctx context.Context, state *models.State) error
 }
 
 // NewRepository creates a new instance of Repository with the provided Database.
@@ -35,6 +44,11 @@ func NewRepository(ctx context.Context, log *slog.Logger, storagePath string) (*
 	}
 
 	return &Repository{db: dtb, log: log}, nil
+}
+
+// NewForTest creates a repository with an existing DB connection (for testing).
+func NewForTest(db *sql.DB) *Repository {
+	return &Repository{db: db}
 }
 
 // initSchema creates the necessary tables if they don't already exist.
