@@ -40,7 +40,7 @@ jobs:
           go-version: '${{ vars.GOLANG_VERSION }}'
 
       - name: Run tests
-        run: make test-coverage
+        run: make test
 
   security:
     name: Security Scan
