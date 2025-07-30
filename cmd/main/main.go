@@ -38,9 +38,9 @@ func main() {
 	}
 
 	// Set up the logger based on the environment.
-	logger := setupLogger(cfg.Env)
+	logger := setupLogger(ctx, cfg.Env)
 
-	logger.Info("Initializing dependencies...")
+	logger.InfoContext(ctx, "Initializing dependencies...")
 
 	// Create a new parser
 	parser := parser.NewParser(logger, cfg.URL)
@@ -48,7 +48,7 @@ func main() {
 	// Initialize the database connection.
 	repo, err := sqlite.NewRepository(ctx, logger, cfg.StoragePath)
 	if err != nil {
-		logger.Error("repository initialization failed", "error", err)
+		logger.ErrorContext(ctx, "repository initialization failed", "error", err)
 		os.Exit(1)
 	}
 
@@ -58,7 +58,7 @@ func main() {
 	// Create a telegram bot service
 	notifier, err := bot.NewBot(logger, cfg.Tg.Token, cfg.Tg.Timeout, repo, cfg.AllowedIDs)
 	if err != nil {
-		logger.Error("bot initialization failed", "error", err)
+		logger.ErrorContext(ctx, "bot initialization failed", "error", err)
 		os.Exit(1)
 	}
 	defer repo.Close()
@@ -120,7 +120,7 @@ func runCheck(ctx context.Context, log *slog.Logger, ch *checker.Checker, botNot
 }
 
 // setupLogger initializes and returns a logger based on the environment provided.
-func setupLogger(env string) *slog.Logger {
+func setupLogger(ctx context.Context, env string) *slog.Logger {
 	var log *slog.Logger
 
 	switch env {
@@ -171,7 +171,7 @@ func setupLogger(env string) *slog.Logger {
 			}),
 		)
 
-		log.Error(
+		log.ErrorContext(ctx,
 			"The env parameter was not specified	 or was invalid. Logging will be minimal, by default.",
 			slog.String("available_envs", "local, development, production"))
 	}
