@@ -5,17 +5,25 @@ import (
 	"log/slog"
 	"time"
 
+	"github.com/Houeta/chrono-flow/internal/repository/sqlite"
 	"gopkg.in/telebot.v4"
 )
 
 // Bot contains the bot API instance and other information.
 type Bot struct {
-	bot API
-	log *slog.Logger
-	// repo    repository.Interface
+	bot          API
+	log          *slog.Logger
+	repo         sqlite.SubscribeRepository
+	allowedChats map[int64]bool
 }
 
-func NewBot(log *slog.Logger, token string, poller time.Duration) (*Bot, error) {
+func NewBot(
+	log *slog.Logger,
+	token string,
+	poller time.Duration,
+	repo sqlite.SubscribeRepository,
+	allowedIDs []int64,
+) (*Bot, error) {
 	bot, err := telebot.NewBot(telebot.Settings{
 		Token:  token,
 		Poller: &telebot.LongPoller{Timeout: poller},
@@ -25,7 +33,12 @@ func NewBot(log *slog.Logger, token string, poller time.Duration) (*Bot, error) 
 	}
 	log.Info("Authorized on account", "account", bot.Me.Username)
 
-	botInstance := &Bot{bot: bot, log: log}
+	allowedMap := make(map[int64]bool)
+	for _, id := range allowedIDs {
+		allowedMap[id] = true
+	}
+
+	botInstance := &Bot{bot: bot, log: log, allowedChats: allowedMap, repo: repo}
 	botInstance.registerRoutes()
 
 	return botInstance, nil
@@ -46,5 +59,7 @@ func (b *Bot) Stop() {
 // registerRoutes configures all routes (commands).
 func (b *Bot) registerRoutes() {
 	// Public routes.
-	b.bot.Handle("/start", b.startHandler)
+	b.bot.Handle("/start", b.subscribeHandler)
+	b.bot.Handle("/subscribe", b.subscribeHandler)
+	b.bot.Handle("/unsubscribe", b.unsubscribeHandler)
 }

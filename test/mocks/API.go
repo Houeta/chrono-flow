@@ -24,6 +24,77 @@ func (_m *API) Handle(endpoint interface{}, h telebot.HandlerFunc, m ...telebot.
 	_m.Called(_ca...)
 }
 
+// Leave provides a mock function with given fields: chat
+func (_m *API) Leave(chat telebot.Recipient) error {
+	ret := _m.Called(chat)
+
+	if len(ret) == 0 {
+		panic("no return value specified for Leave")
+	}
+
+	var r0 error
+	if rf, ok := ret.Get(0).(func(telebot.Recipient) error); ok {
+		r0 = rf(chat)
+	} else {
+		r0 = ret.Error(0)
+	}
+
+	return r0
+}
+
+// NewContext provides a mock function with given fields: u
+func (_m *API) NewContext(u telebot.Update) telebot.Context {
+	ret := _m.Called(u)
+
+	if len(ret) == 0 {
+		panic("no return value specified for NewContext")
+	}
+
+	var r0 telebot.Context
+	if rf, ok := ret.Get(0).(func(telebot.Update) telebot.Context); ok {
+		r0 = rf(u)
+	} else {
+		if ret.Get(0) != nil {
+			r0 = ret.Get(0).(telebot.Context)
+		}
+	}
+
+	return r0
+}
+
+// Send provides a mock function with given fields: to, what, opts
+func (_m *API) Send(to telebot.Recipient, what interface{}, opts ...interface{}) (*telebot.Message, error) {
+	var _ca []interface{}
+	_ca = append(_ca, to, what)
+	_ca = append(_ca, opts...)
+	ret := _m.Called(_ca...)
+
+	if len(ret) == 0 {
+		panic("no return value specified for Send")
+	}
+
+	var r0 *telebot.Message
+	var r1 error
+	if rf, ok := ret.Get(0).(func(telebot.Recipient, interface{}, ...interface{}) (*telebot.Message, error)); ok {
+		return rf(to, what, opts...)
+	}
+	if rf, ok := ret.Get(0).(func(telebot.Recipient, interface{}, ...interface{}) *telebot.Message); ok {
+		r0 = rf(to, what, opts...)
+	} else {
+		if ret.Get(0) != nil {
+			r0 = ret.Get(0).(*telebot.Message)
+		}
+	}
+
+	if rf, ok := ret.Get(1).(func(telebot.Recipient, interface{}, ...interface{}) error); ok {
+		r1 = rf(to, what, opts...)
+	} else {
+		r1 = ret.Error(1)
+	}
+
+	return r0, r1
+}
+
 // Start provides a mock function with no fields
 func (_m *API) Start() {
 	_m.Called()

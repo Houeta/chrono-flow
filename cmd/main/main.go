@@ -29,7 +29,10 @@ func main() {
 	// This allows for graceful shutdown.
 	ctx, stop := signal.NotifyContext(context.Background(), syscall.SIGINT, syscall.SIGTERM)
 
-	cfg := config.MustLoad()
+	cfg, err := config.MustLoad()
+	if err != nil {
+		log.Fatalf("Failed to load configuration: %v", err)
+	}
 
 	// Set up the logger based on the environment.
 	logger := setupLogger(cfg.Env)
@@ -40,9 +43,10 @@ func main() {
 	if err != nil {
 		log.Fatalf("Failed to create a repository: %v", err)
 	}
-	_ = checker.NewChecker(logger, parser, repo)
 
-	chronoBot, err := bot.NewBot(logger, cfg.Tg.Token, cfg.Tg.Timeout)
+	checker := checker.NewChecker(logger, parser, repo)
+
+	notifier, err := bot.NewBot(logger, cfg.Tg.Token, cfg.Tg.Timeout, repo, cfg.AllowedIDs)
 	if err != nil {
 		log.Fatalf("Failed to init bot: %v", err)
 	}
@@ -53,7 +57,16 @@ func main() {
 	logger.InfoContext(ctx, "Application started. Press Ctrl+C to stop.")
 
 	// Start the bot in a goroutine to allow main to listen for signals.
-	go chronoBot.Start()
+	go notifier.Start()
+
+	changes, err := checker.CheckForUpdates(ctx)
+	if err != nil {
+		logger.Error("Failed to get new changes", "error", err)
+	}
+	err = notifier.SendChangesNotification(ctx, changes)
+	if err != nil {
+		logger.Error("failed to send notification", "error", err)
+	}
 
 	// Wait for the context to be canceled (e.g., by Ctrl+C).
 	<-ctx.Done()
@@ -62,7 +75,7 @@ func main() {
 	logger.InfoContext(ctx, "Shutdown signal received. Stopping application...")
 
 	// Stop the bot gracefully.
-	chronoBot.Stop()
+	notifier.Stop()
 
 	// Log graceful shutdown completion.
 	logger.InfoContext(ctx, "Application stopped gracefully.")

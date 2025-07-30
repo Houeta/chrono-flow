@@ -24,6 +24,17 @@ type StateRepository interface {
 	UpdateState(ctx context.Context, state *models.State) error
 }
 
+type SubscribeRepository interface {
+	// SubscribeChat adds a new chat to the list of subscribers.
+	SubscribeChat(ctx context.Context, chatID int64) error
+
+	// UnsubscribeChat removes a chat from the list of subscribers.
+	UnsubscribeChat(ctx context.Context, chatID int64) error
+
+	// GetSubscribedChats returns a list of all active subscribers.
+	GetSubscribedChats(ctx context.Context) ([]int64, error)
+}
+
 // NewRepository creates a new instance of Repository with the provided Database.
 // It returns a pointer to the newly created Repository.
 func NewRepository(ctx context.Context, log *slog.Logger, storagePath string) (*Repository, error) {
@@ -65,6 +76,11 @@ func initSchema(ctx context.Context, dtb *sql.DB) error {
 		quantity TEXT,
 		price TEXT,
 		image_url TEXT
+	);
+
+	CREATE TABLE IF NOT EXISTS subscriptions (
+		chat_id INTEGER PRIMARY KEY NOT NULL,
+		subscribed_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 	);
 	`
 	_, err := dtb.ExecContext(ctx, migrationQuery)
