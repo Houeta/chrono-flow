@@ -1,4 +1,4 @@
-package parser
+package parser_test
 
 import (
 	"bytes"
@@ -11,6 +11,7 @@ import (
 	"testing"
 
 	"github.com/Houeta/chrono-flow/internal/models"
+	"github.com/Houeta/chrono-flow/internal/parser"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
@@ -32,7 +33,7 @@ func (m *mockRoundTripper) RoundTrip(_ *http.Request) (*http.Response, error) {
 func TestParseTableResponse(t *testing.T) {
 	// Creating a "silent" logger that doesn't output anything during tests
 	logger := slog.New(slog.NewTextHandler(io.Discard, nil))
-	p := NewParser(logger, "") // The URL is not important for this test.
+	p := parser.NewParser(logger, "") // The URL is not important for this test.
 
 	// Test HTML
 	validHTML := `
@@ -87,7 +88,7 @@ func TestParseTableResponse(t *testing.T) {
 			// Convert the string to io.ReadCloser
 			reader := io.NopCloser(strings.NewReader(tc.inputHTML))
 
-			products, err := p.parseTableResponse(t.Context(), reader)
+			products, err := p.ParseTableResponse(t.Context(), reader)
 
 			if tc.expectError {
 				if err == nil {
@@ -175,10 +176,10 @@ func TestGetHTMLResponse(t *testing.T) {
 			}
 
 			// Creating a parser with a mock client
-			p := NewParser(logger, tc.parserURL)
-			p.client = mockClient
+			p := parser.NewParser(logger, tc.parserURL)
+			p.Client = mockClient
 
-			resp, err := p.getHTMLResponse(ctx)
+			resp, err := p.GetHTMLResponse(ctx)
 
 			if tc.expectError {
 				if err == nil {
@@ -228,8 +229,8 @@ func TestParseProducts(t *testing.T) {
 		},
 	}
 
-	p := NewParser(logger, "http://valid-url.com")
-	p.client = mockClient
+	p := parser.NewParser(logger, "http://valid-url.com")
+	p.Client = mockClient
 
 	products, err := p.ParseProducts(ctx)
 	if err != nil {
@@ -249,7 +250,7 @@ func TestParseProducts_ResponseError(t *testing.T) {
 	logger := slog.New(slog.NewTextHandler(io.Discard, nil))
 	ctx := t.Context()
 
-	p := NewParser(logger, ";;/invalid-url")
+	p := parser.NewParser(logger, ";;/invalid-url")
 
 	products, err := p.ParseProducts(ctx)
 

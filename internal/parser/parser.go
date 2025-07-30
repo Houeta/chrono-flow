@@ -15,25 +15,31 @@ import (
 
 type Parser struct {
 	log     *slog.Logger
-	client  *http.Client
+	Client  *http.Client
 	destURL string
 }
 
+type HTMLParser interface {
+	ParseProducts(ctx context.Context) ([]models.Product, error)
+	GetHTMLResponse(ctx context.Context) (*http.Response, error)
+	ParseTableResponse(ctx context.Context, inp io.ReadCloser) ([]models.Product, error)
+}
+
 func NewParser(log *slog.Logger, destinationURL string) *Parser {
-	return &Parser{log: log, destURL: destinationURL, client: http.DefaultClient}
+	return &Parser{log: log, destURL: destinationURL, Client: http.DefaultClient}
 }
 
 func (p *Parser) ParseProducts(ctx context.Context) ([]models.Product, error) {
-	resp, err := p.getHTMLResponse(ctx)
+	resp, err := p.GetHTMLResponse(ctx)
 	if err != nil {
 		return nil, fmt.Errorf("failed to get html response: %w", err)
 	}
 	defer resp.Body.Close()
 
-	return p.parseTableResponse(ctx, resp.Body)
+	return p.ParseTableResponse(ctx, resp.Body)
 }
 
-func (p *Parser) getHTMLResponse(ctx context.Context) (*http.Response, error) {
+func (p *Parser) GetHTMLResponse(ctx context.Context) (*http.Response, error) {
 	reqURL, err := url.Parse(p.destURL)
 	if err != nil {
 		return nil, fmt.Errorf("failed to parse destination URL %s: %w", p.destURL, err)
@@ -48,7 +54,7 @@ func (p *Parser) getHTMLResponse(ctx context.Context) (*http.Response, error) {
 
 	p.log.DebugContext(ctx, "Send request", "method", req.Method, "URL", req.URL, "header", req.Header)
 
-	res, err := p.client.Do(req)
+	res, err := p.Client.Do(req)
 	if err != nil {
 		return nil, fmt.Errorf("failed to request %s: %w", p.destURL, err)
 	}
@@ -62,7 +68,7 @@ func (p *Parser) getHTMLResponse(ctx context.Context) (*http.Response, error) {
 	return res, nil
 }
 
-func (p *Parser) parseTableResponse(ctx context.Context, inp io.ReadCloser) ([]models.Product, error) {
+func (p *Parser) ParseTableResponse(ctx context.Context, inp io.ReadCloser) ([]models.Product, error) {
 	doc, err := goquery.NewDocumentFromReader(inp)
 	if err != nil {
 		return nil, fmt.Errorf("data cannot be parsed as HTML: %w", err)

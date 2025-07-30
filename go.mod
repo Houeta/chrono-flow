@@ -3,6 +3,7 @@ module github.com/Houeta/chrono-flow
 go 1.24.4
 
 require (
+	github.com/DATA-DOG/go-sqlmock v1.5.2
 	github.com/PuerkitoBio/goquery v1.10.3
 	github.com/mattn/go-sqlite3 v1.14.29
 	github.com/spf13/viper v1.20.1
