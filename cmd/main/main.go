@@ -2,11 +2,13 @@ package main
 
 import (
 	"context"
+	"fmt"
 	"log"
 	"log/slog"
 	"os"
 	"os/signal"
 	"syscall"
+	"time"
 
 	"github.com/Houeta/chrono-flow/internal/bot"
 	"github.com/Houeta/chrono-flow/internal/config"
@@ -29,6 +31,7 @@ func main() {
 	// This allows for graceful shutdown.
 	ctx, stop := signal.NotifyContext(context.Background(), syscall.SIGINT, syscall.SIGTERM)
 
+	// Load application configuration.
 	cfg, err := config.MustLoad()
 	if err != nil {
 		log.Fatalf("Failed to load configuration: %v", err)
@@ -37,48 +40,83 @@ func main() {
 	// Set up the logger based on the environment.
 	logger := setupLogger(cfg.Env)
 
+	logger.Info("Initializing dependencies...")
+
+	// Create a new parser
 	parser := parser.NewParser(logger, cfg.URL)
 
+	// Initialize the database connection.
 	repo, err := sqlite.NewRepository(ctx, logger, cfg.StoragePath)
 	if err != nil {
-		log.Fatalf("Failed to create a repository: %v", err)
+		logger.Error("repository initialization failed", "error", err)
+		os.Exit(1)
 	}
 
-	checker := checker.NewChecker(logger, parser, repo)
+	// Create a service which detects changes using repository and parser.
+	updateChecker := checker.NewChecker(logger, parser, repo)
 
+	// Create a telegram bot service
 	notifier, err := bot.NewBot(logger, cfg.Tg.Token, cfg.Tg.Timeout, repo, cfg.AllowedIDs)
 	if err != nil {
-		log.Fatalf("Failed to init bot: %v", err)
+		logger.Error("bot initialization failed", "error", err)
+		os.Exit(1)
 	}
 	defer repo.Close()
 	defer stop()
 
 	// Log that the application has started.
-	logger.InfoContext(ctx, "Application started. Press Ctrl+C to stop.")
+	logger.InfoContext(
+		ctx,
+		"Starting main application loop. Press Ctrl+C to stop.",
+		"interval",
+		fmt.Sprintf("%dm", int(cfg.Interval.Minutes())),
+	)
 
-	// Start the bot in a goroutine to allow main to listen for signals.
+	// Start the bot's command handlers in a goroutine.
 	go notifier.Start()
+	defer notifier.Stop()
 
-	changes, err := checker.CheckForUpdates(ctx)
-	if err != nil {
-		logger.Error("Failed to get new changes", "error", err)
+	// Run the first check immediately on startup without waiting for the first tick.
+	runCheck(ctx, logger, updateChecker, notifier)
+
+	// Run the main scheduler loop.
+	ticker := time.NewTicker(cfg.Interval)
+	defer ticker.Stop()
+
+	for {
+		select {
+		case <-ticker.C:
+			// Triggered by the ticker for a scheduled check.
+			runCheck(ctx, logger, updateChecker, notifier)
+
+		case <-ctx.Done():
+			// Triggered by Ctrl+C or another shutdown signal.
+			logger.InfoContext(ctx, "Shutdown signal received. Stopping application...")
+			return // Exit the loop and allow deferred functions to run.
+		}
 	}
-	err = notifier.SendChangesNotification(ctx, changes)
+}
+
+// runCheck encapsulates the logic for a single update check.
+func runCheck(ctx context.Context, log *slog.Logger, ch *checker.Checker, botNotifier *bot.Bot) {
+	log.InfoContext(ctx, "Running scheduled check for updates...")
+
+	// Perform the check.
+	changes, err := ch.CheckForUpdates(ctx)
 	if err != nil {
-		logger.Error("failed to send notification", "error", err)
+		log.ErrorContext(ctx, "failed to check for updates", "error", err)
+		return
 	}
 
-	// Wait for the context to be canceled (e.g., by Ctrl+C).
-	<-ctx.Done()
-
-	// Log that a shutdown signal has been received.
-	logger.InfoContext(ctx, "Shutdown signal received. Stopping application...")
-
-	// Stop the bot gracefully.
-	notifier.Stop()
-
-	// Log graceful shutdown completion.
-	logger.InfoContext(ctx, "Application stopped gracefully.")
+	// If changes are found, send a notification.
+	if changes.HasChanges() {
+		log.InfoContext(ctx, "Changes detected, sending notification")
+		if err = botNotifier.SendChangesNotification(ctx, changes); err != nil {
+			log.ErrorContext(ctx, "failed to send notification", "error", err)
+		}
+	} else {
+		log.InfoContext(ctx, "No new changes found")
+	}
 }
 
 // setupLogger initializes and returns a logger based on the environment provided.
